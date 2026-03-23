@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 import os
+import openpyxl
 
 
 class Query:
@@ -29,8 +30,10 @@ class Query:
                         if words[i] == "*":
                             output['select'].append(words[i])
                             break
-                        clean_word = words[i].strip(",").strip('"').strip("'")
-                        output['select'].append(clean_word)
+                        column = words[i].rstrip(",")  # remove trailing comma
+                        clean_word = column.strip('"').strip("'")
+                        if clean_word:
+                            output['select'].append(clean_word)
                         i += 1
 
                 elif words[i].upper() == "FROM":
@@ -63,8 +66,7 @@ class Query:
         except Exception as e:
             raise ValueError(e)
 
-    # {'select': ['name', 'age'], 'from': 'users', 'where': "age > 30 AND city = 'New York'"}
-    def to_excel(self, parsed):
+    def to_excel(self, parsed, type=None):
         if not parsed['from']:
             raise ValueError("Invalid sql syntax")
         else:
@@ -84,9 +86,15 @@ class Query:
                 r'(?<![<>!])=(?!=)', '==', parsed['where'])
 
             file = file.query(parsed['where'])
-        # new file
-        name, ext = os.path.splitext(self.excel_file)
-        output_path = f"{name}_output{ext}"
-        file.to_excel(output_path, index=False)
-        
-        return output_path
+            
+        if type is None or type.lower().strip()=="dict":
+            return file.to_dict(orient='records')
+        elif type.lower().strip()=="file":
+            name, ext = os.path.splitext(self.excel_file)
+            output_path = f"{name}_output{ext}"
+            file.to_excel(output_path, index=False)
+            return output_path
+        elif type.lower().strip()=="list":
+            return file.to_dict(orient='list')
+        else:
+            raise ValueError("Invalid Parameter (list, dict, file)")
