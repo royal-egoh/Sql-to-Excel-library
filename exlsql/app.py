@@ -13,16 +13,19 @@ class Query:
 
     def parse(self):
         try:
-            output = {'select': [], 'from': '', 'where': ''}
+            output = {'select': [],'distinct':False, 'from': '', 'where': ''}
             sql_string = self.sql
             # words = sql_string.split()
-            words = words = re.findall(r'"[^"]*"|\'[^\']*\'|\S+', sql_string)
+            words = re.findall(r'"[^"]*"|\'[^\']*\'|\S+', sql_string)
             i = 0
             while i < len(words):
                 if words[i].upper() == "SELECT":
                     i += 1
                     if i >= len(words):
                         raise ValueError("Invalid SQL: incomplete SELECT clause")
+                    if words[i].upper() == "DISTINCT":   #!TO BE ADDED
+                        output['distinct'] = True
+                        i+=1
                     if words[i] == "FROM":
                         output['select'].append("*")
                         break
@@ -46,7 +49,7 @@ class Query:
                     i += 1
                     condition = []
                     while i < len(words):
-                        if words[i] in ("AND", "OR"):
+                        if words[i].upper() in ("AND", "OR"):
                             output['where'] += ' '.join(condition) + \
                                 ' ' + words[i] + ' '
                             condition = []
@@ -78,8 +81,14 @@ class Query:
         else:
             for i in parsed['select']:
                 select_quer.append(f"{i}")
+            
+                    
             file = file[select_quer]
-
+        if parsed['distinct']:#?DISTINCT
+            if parsed['select'] == ['*'] or not parsed['select']:
+                file = file.drop_duplicates()
+            else:
+                file = file.drop_duplicates(subset=parsed['select'])
         # WHERE QUERY
         if parsed['where']:
             parsed['where'] = re.sub(
