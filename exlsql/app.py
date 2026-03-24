@@ -13,7 +13,7 @@ class Query:
 
     def parse(self):
         try:
-            output = {'select': [],'distinct':False, 'from': '', 'where': ''}
+            output = {'select': [],'distinct':False, 'from': '', 'where': '', 'order':''}
             sql_string = self.sql
             # words = sql_string.split()
             words = re.findall(r'"[^"]*"|\'[^\']*\'|\S+', sql_string)
@@ -48,20 +48,42 @@ class Query:
                 elif words[i].upper() == "WHERE":
                     i += 1
                     condition = []
+                    parsed_where = []
+
+                    sql_bool_map = {"AND": "and", "OR": "or", "NOT": "~"}
+
                     while i < len(words):
-                        if words[i].upper() in ("AND", "OR"):
-                            output['where'] += ' '.join(condition) + \
-                                ' ' + words[i] + ' '
-                            condition = []
+                        word = words[i].upper()
+                        if word in sql_bool_map:
+                            if condition:
+                                parsed_where.append(' '.join(condition))
+                                condition = []
+                            parsed_where.append(sql_bool_map[word])
                         else:
                             condition.append(words[i])
                         i += 1
+
                     if condition:
-                        output['where'] += ' '.join(condition)
-                    break
-                # elif words[i] == "ORDER":
-                #     while []
-                #     i+=1
+                        parsed_where.append(' '.join(condition))
+
+                    output['where'] = ' '.join(parsed_where)
+                
+                elif words[i].upper() == "ORDER":
+                    i+=1
+                    if i<len(words) and words[i].upper() == 'BY':
+                        i+=1
+                        if i >= len(words):
+                            raise ValueError("ORDER BY missing column")
+                        
+                        col = words[i].rstrip(",").strip('"').strip("'")
+                        i += 1
+                        direction = 'ASC'
+                        if i < len(words) and words[i].upper() in ('ASC', 'DESC'):
+                            direction = words[i].upper()
+                            i += 1
+                        output['order'] = (col, direction)
+                    else:
+                        raise ValueError("Invalid syntax")
 
                 else:
                     i += 1
@@ -75,26 +97,31 @@ class Query:
         else:
             file = pd.read_excel(self.excel_file, sheet_name=parsed['from'])
         select_quer = []
-        # SELECT QUERY
-        if parsed['select'] == ['*'] or not parsed['select']:
-            pass
-        else:
-            for i in parsed['select']:
-                select_quer.append(f"{i}")
-            
-                    
-            file = file[select_quer]
-        if parsed['distinct']:#?DISTINCT
-            if parsed['select'] == ['*'] or not parsed['select']:
-                file = file.drop_duplicates()
-            else:
-                file = file.drop_duplicates(subset=parsed['select'])
         # WHERE QUERY
         if parsed['where']:
             parsed['where'] = re.sub(
                 r'(?<![<>!])=(?!=)', '==', parsed['where'])
 
             file = file.query(parsed['where'])
+            
+        # SELECT QUERY
+        if parsed['select'] == ['*'] or not parsed['select']:
+            pass
+        else:
+            for i in parsed['select']:
+                select_quer.append(f"{i}")
+            file = file[select_quer]
+            
+        if parsed['distinct']:#?DISTINCT
+            if parsed['select'] == ['*'] or not parsed['select']:
+                file = file.drop_duplicates()
+            else:
+                file = file.drop_duplicates(subset=parsed['select'])
+        
+        if parsed['order']:
+            col, direction = parsed['order']
+            ascending = True if direction == 'ASC' else False
+            file = file.sort_values(by=col, ascending=ascending)
             
         if type is None or type.lower().strip()=="dict":
             return file.to_dict(orient='records')
@@ -104,6 +131,6 @@ class Query:
             file.to_excel(output_path, index=False)
             return output_path
         elif type.lower().strip()=="list":
-            return file.to_dict(orient='list')
+            return f"{parsed['from']} = {file.to_dict(orient='list')}"
         else:
             raise ValueError("Invalid Parameter (list, dict, file)")
