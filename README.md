@@ -19,7 +19,7 @@ from exlsql import Query
 
 q = Query("SELECT name, age FROM Sheet1 WHERE age > 30", excel_file="data.xlsx")
 parsed = q.parse()
-output = q.to_excel(parsed)
+output = q.to_excel(parsed, type="dict")
 
 print(output)  # data_output.xlsx
 ```
