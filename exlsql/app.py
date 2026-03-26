@@ -23,7 +23,7 @@ class Query:
                     i += 1
                     if i >= len(words):
                         raise ValueError("Invalid SQL: incomplete SELECT clause")
-                    if words[i].upper() == "DISTINCT":   #!TO BE ADDED
+                    if words[i].upper() == "DISTINCT":   
                         output['distinct'] = True
                         i+=1
                     if words[i] == "FROM":
@@ -53,6 +53,8 @@ class Query:
                     in_lists = {}  # store IN lists for df.query() @var syntax
                     while i < len(words):
                         word = words[i].upper()
+                        if word == "ORDER":
+                            break
                         if word == "IN":
                             col = condition.pop()
                             i += 1
