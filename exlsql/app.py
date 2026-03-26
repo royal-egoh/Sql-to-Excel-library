@@ -6,14 +6,15 @@ import openpyxl
 
 class Query:
     def __init__(self, sql, excel_file=None):
-        if not excel_file or not excel_file.endswith(".xlsx") :
+        if not excel_file or not excel_file.endswith(".xlsx"):
             raise ValueError("Wrong file type, must be .xlsx")
         self.sql = sql
         self.excel_file = excel_file
 
     def parse(self):
         try:
-            output = {'select': [],'distinct':False, 'from': '', 'where': '', 'order':''}
+            output = {'select': [], 'distinct': False,
+                      'from': '', 'where': '', 'order': ''}
             sql_string = self.sql
             # words = sql_string.split()
             words = re.findall(r'"[^"]*"|\'[^\']*\'|\S+', sql_string)
@@ -22,10 +23,11 @@ class Query:
                 if words[i].upper() == "SELECT":
                     i += 1
                     if i >= len(words):
-                        raise ValueError("Invalid SQL: incomplete SELECT clause")
-                    if words[i].upper() == "DISTINCT":   
+                        raise ValueError(
+                            "Invalid SQL: incomplete SELECT clause")
+                    if words[i].upper() == "DISTINCT":
                         output['distinct'] = True
-                        i+=1
+                        i += 1
                     if words[i] == "FROM":
                         output['select'].append("*")
                         break
@@ -83,14 +85,14 @@ class Query:
                         parsed_where.append(' '.join(condition))
                     output['where'] = ' '.join(parsed_where)
                     output['in_lists'] = in_lists
-                
+
                 elif words[i].upper() == "ORDER":
-                    i+=1
-                    if i<len(words) and words[i].upper() == 'BY':
-                        i+=1
+                    i += 1
+                    if i < len(words) and words[i].upper() == 'BY':
+                        i += 1
                         if i >= len(words):
                             raise ValueError("ORDER BY missing column")
-                        
+
                         col = words[i].rstrip(",").strip('"').strip("'")
                         i += 1
                         direction = 'ASC'
@@ -118,8 +120,9 @@ class Query:
             parsed['where'] = re.sub(
                 r'(?<![<>!])=(?!=)', '==', parsed['where'])
 
-            file = file.query(parsed['where'], local_dict=parsed.get('in_lists', {}))
-            
+            file = file.query(
+                parsed['where'], local_dict=parsed.get('in_lists', {}))
+
         # SELECT QUERY
         if parsed['select'] == ['*'] or not parsed['select']:
             pass
@@ -127,28 +130,27 @@ class Query:
             for i in parsed['select']:
                 select_quer.append(f"{i}")
             file = file[select_quer]
-            
-        if parsed['distinct']:#?DISTINCT
+
+        if parsed['distinct']:  # ?DISTINCT
             if parsed['select'] == ['*'] or not parsed['select']:
                 file = file.drop_duplicates()
             else:
                 file = file.drop_duplicates(subset=parsed['select'])
-        
-        if parsed['order']:#?Order by
+
+        if parsed['order']:  # ?Order by
             col, direction = parsed['order']
             ascending = True if direction == 'ASC' else False
             file = file.sort_values(by=col, ascending=ascending)
-            
-            
-        #?Return types
-        if type is None or type.lower().strip()=="dict":
+
+        # ?Return types
+        if type is None or type.lower().strip() == "dict":
             return file.to_dict(orient='records')
-        elif type.lower().strip()=="file":
+        elif type.lower().strip() == "file":
             name, ext = os.path.splitext(self.excel_file)
             output_path = f"{name}_output{ext}"
             file.to_excel(output_path, index=False)
             return output_path
-        elif type.lower().strip()=="list":
+        elif type.lower().strip() == "list":
             return f"{parsed['from']} = {file.to_dict(orient='list')}"
         else:
             raise ValueError("Invalid Parameter (list, dict, file)")
