@@ -49,12 +49,27 @@ class Query:
                     i += 1
                     condition = []
                     parsed_where = []
-
                     sql_bool_map = {"AND": "and", "OR": "or", "NOT": "~"}
-
+                    in_lists = {}  # store IN lists for df.query() @var syntax
                     while i < len(words):
                         word = words[i].upper()
-                        if word in sql_bool_map:
+                        if word == "IN":
+                            col = condition.pop()
+                            i += 1
+                            if i >= len(words) or not words[i].startswith("("):
+                                raise ValueError("Invalid IN syntax")
+                            values = []
+                            while True:
+                                val = words[i].lstrip("(").rstrip(",)")
+                                if val:
+                                    values.append(val.strip('"').strip("'"))
+                                if words[i].rstrip(",").endswith(")"):
+                                    break
+                                i += 1
+                            var_name = f"_in_{col}"
+                            in_lists[var_name] = values
+                            parsed_where.append(f"{col} in @{var_name}")
+                        elif word in sql_bool_map:
                             if condition:
                                 parsed_where.append(' '.join(condition))
                                 condition = []
@@ -62,11 +77,10 @@ class Query:
                         else:
                             condition.append(words[i])
                         i += 1
-
                     if condition:
                         parsed_where.append(' '.join(condition))
-
                     output['where'] = ' '.join(parsed_where)
+                    output['in_lists'] = in_lists
                 
                 elif words[i].upper() == "ORDER":
                     i+=1
@@ -102,7 +116,7 @@ class Query:
             parsed['where'] = re.sub(
                 r'(?<![<>!])=(?!=)', '==', parsed['where'])
 
-            file = file.query(parsed['where'])
+            file = file.query(parsed['where'], local_dict=parsed.get('in_lists', {}))
             
         # SELECT QUERY
         if parsed['select'] == ['*'] or not parsed['select']:
@@ -118,11 +132,13 @@ class Query:
             else:
                 file = file.drop_duplicates(subset=parsed['select'])
         
-        if parsed['order']:
+        if parsed['order']:#?Order by
             col, direction = parsed['order']
             ascending = True if direction == 'ASC' else False
             file = file.sort_values(by=col, ascending=ascending)
             
+            
+        #?Return types
         if type is None or type.lower().strip()=="dict":
             return file.to_dict(orient='records')
         elif type.lower().strip()=="file":
