@@ -1,6 +1,7 @@
+```markdown
 # exlsql
 
-Query Excel files using SQL syntax. No database, no server — just point it at a `.xlsx` file, write a SQL string, and get your data back.
+Query Excel files using SQL syntax (DQL). `exlsql` lets you run SQL-like queries directly on `.xlsx` files using Python. Under the hood, it uses `pandas`, but exposes a simple SQL interface for filtering, selecting, and sorting data.
 
 ---
 
@@ -18,107 +19,82 @@ pip install exlsql
 from exlsql import Query
 
 q = Query(
-    "SELECT 'First Name', 'Last Name', Age FROM Sheet1 WHERE Age > 30",
+    "SELECT 'First Name', Age FROM Sheet1 WHERE Age > 25 ORDER BY Age DESC",
     excel_file="data.xlsx"
 )
 
-result = q.to_excel(q.parse(), type="dict")
+parsed = q.parse()
+result = q.to_excel(parsed)
+
+print(result)  # [{'First Name': 'Alice', 'Age': 32}, ...]
 ```
 
 ---
 
-## Usage
+## How It Works
 
-Every query follows the same two steps:
+Every query follows two simple steps:
 
 ```python
 q = Query(sql_string, excel_file="yourfile.xlsx")
 parsed = q.parse()
-result = q.to_excel(parsed, type="dict")  # or "list" or "file"
+result = q.to_excel(parsed, type="dict")  # optional type parameter
 ```
 
 ---
 
 ## Supported SQL Syntax
 
-### SELECT columns
-```sql
-SELECT 'First Name', Age, Country FROM Sheet1
-```
-
-### SELECT all columns
-```sql
-SELECT * FROM Sheet1
-```
-
-### DISTINCT
-```sql
-SELECT DISTINCT Country FROM Sheet1
-```
-
-### WHERE — comparisons
-```sql
-SELECT * FROM Sheet1 WHERE Age > 30
-SELECT * FROM Sheet1 WHERE Age >= 18
-SELECT * FROM Sheet1 WHERE Country = 'France'
-```
-
-### WHERE — AND / OR
-```sql
-SELECT * FROM Sheet1 WHERE Age > 30 AND Country = 'France'
-SELECT * FROM Sheet1 WHERE Country = 'France' OR Country = 'United States'
-```
-
-### WHERE — IN
-```sql
-SELECT * FROM Sheet1 WHERE Country IN ('France', 'United States', 'China')
-```
-
-### ORDER BY
-```sql
-SELECT 'First Name', Age FROM Sheet1 ORDER BY Age ASC
-SELECT 'First Name', Age FROM Sheet1 ORDER BY Age DESC
-```
-
-### Combined
-```sql
-SELECT 'First Name', Age, Country FROM Sheet1
-WHERE Age > 25 AND Country = 'France'
-ORDER BY Age DESC
-```
+| Feature | Example |
+|---------|---------|
+| **SELECT columns** | `SELECT 'First Name', Age, Country FROM Sheet1` |
+| **SELECT all** | `SELECT * FROM Sheet1` |
+| **DISTINCT** | `SELECT DISTINCT Country FROM Sheet1` |
+| **WHERE comparisons** | `SELECT * FROM Sheet1 WHERE Age > 30` |
+| **WHERE AND / OR** | `SELECT * FROM Sheet1 WHERE Age > 30 AND Country = 'France'` |
+| **WHERE IN** | `SELECT * FROM Sheet1 WHERE Country IN ('France', 'USA', 'China')` |
+| **ORDER BY** | `SELECT * FROM Sheet1 ORDER BY Age DESC` |
+| **Combined** | `SELECT 'First Name', Age FROM Sheet1 WHERE Age > 25 ORDER BY Age DESC` |
 
 ---
 
-## Return Types
+## Output Types
 
-| type | Returns |
-|---|---|
-| `"dict"` (default) | List of row dicts — `[{'Name': 'Alice', 'Age': 32}, ...]` |
-| `"list"` | Column-oriented dict — `{'Name': ['Alice', ...], 'Age': [32, ...]}` |
+| Type | Returns |
+|------|---------|
+| `"dict"` (default) | List of row dictionaries — `[{'Name': 'Alice', 'Age': 32}, ...]` |
+| `"list"` | Column-oriented dict — `{'Name': ['Alice', 'Bob'], 'Age': [32, 25]}` |
 | `"file"` | Writes result to `yourfile_output.xlsx`, returns the path |
 
 ```python
-# dict (default)
+# Dict format (default)
 q.to_excel(parsed)
 q.to_excel(parsed, type="dict")
 
-# list
+# List format
 q.to_excel(parsed, type="list")
 
-# file
+# Save to file
 path = q.to_excel(parsed, type="file")
 print(path)  # data_output.xlsx
 ```
 
 ---
 
-## Notes
+## Requirements
+
+- `pandas`
+- `openpyxl`
+
+---
+
+## Important Notes
 
 - `FROM` refers to the **sheet name** inside the Excel file, not the filename
-- Only `.xlsx` files are supported — passing any other format raises a `ValueError`
-- Column names with spaces must be wrapped in single or double quotes: `'First Name'` or `"First Name"`
-- String values in `WHERE` must be wrapped in single quotes: `WHERE Country = 'France'`
-- Output files are always written alongside the input file as `filename_output.xlsx`
+- Only `.xlsx` files are supported — other formats raise a `ValueError`
+- Column names with spaces must be wrapped in quotes: `'First Name'` or `"First Name"`
+- String values in `WHERE` must use single quotes: `WHERE Country = 'France'`
+- Output files are written alongside the input as `filename_output.xlsx`
 
 ---
 
@@ -131,15 +107,38 @@ except ValueError as e:
     print(e)  # Wrong file type, must be .xlsx
 ```
 
-Common errors:
-- Wrong file type → `ValueError: Wrong file type, must be .xlsx`
-- Missing FROM → `ValueError: Invalid sql syntax`
-- Bad ORDER BY → `ValueError: ORDER BY missing column`
-- Invalid return type → `ValueError: Invalid Parameter (list, dict, file)`
+| Error | Cause |
+|-------|-------|
+| `Wrong file type` | File is not `.xlsx` |
+| `Invalid sql syntax` | Missing `FROM` clause |
+| `ORDER BY missing column` | Incorrect `ORDER BY` syntax |
+| `Invalid Parameter` | Wrong output type |
 
 ---
 
-## Requirements
+## Limitations
 
-- `pandas`
-- `openpyxl`
+- No `JOIN` support (single sheet only)
+- No `GROUP BY` or aggregations
+- Case-sensitive column names (depending on Excel data)
+- Limited SQL parsing (not a full SQL engine)
+
+---
+
+## Why exlsql?
+
+If you:
+- Work with Excel frequently
+- Know SQL but don't want database overhead
+- Need quick data querying in scripts
+
+Then `exlsql` gives you a clean bridge between Excel and SQL thinking.
+
+---
+
+## Contributing
+
+Pull requests, issues, and suggestions are welcome.
+
+<!--! drev -->
+```
