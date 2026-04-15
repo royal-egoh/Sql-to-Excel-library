@@ -1,5 +1,5 @@
 ```markdown
-# exlsql
+## exlsql
 
 Query Excel files using SQL syntax (DQL). `exlsql` lets you run SQL-like queries directly on `.xlsx` files using Python. Under the hood, it uses `pandas`, but exposes a simple SQL interface for filtering, selecting, and sorting data.
 
@@ -139,6 +139,4 @@ Then `exlsql` gives you a clean bridge between Excel and SQL thinking.
 ## Contributing
 
 Pull requests, issues, and suggestions are welcome.
-
-<!--! drev -->
 ```
